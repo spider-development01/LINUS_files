@@ -419,32 +419,42 @@
             });
         }
 
-        async function fetchNews() {
-            const container = document.getElementById('news-container');
-            const { data, error } = await client.from('news_articles').select('*').order('date', { ascending: false });
-            
-            if(error || !data) { container.innerHTML = '<p>News feed unavailable.</p>'; return; }
-            if(data.length === 0) { container.innerHTML = '<p>No recent news items.</p>'; return; }
+    // --- UPDATED NEWS FETCHER ---
+    async function fetchNews() {
+        const container = document.getElementById('news-container');
+        const { data, error } = await client.from('news_articles').select('*').order('date', { ascending: false });
+        
+        if(error || !data) { container.innerHTML = '<p>News feed unavailable.</p>'; return; }
+        if(data.length === 0) { container.innerHTML = '<p>No recent news items.</p>'; return; }
 
-            container.innerHTML = '';
-            data.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'news-item';
-                div.innerHTML = `
-                    <div class="news-header" onclick="this.parentElement.classList.toggle('active')">
-                        <div class="news-meta">
-                            <span>${new Date(item.date).toLocaleDateString()}</span>
-                            <span>Released by DOJ</span>
-                        </div>
-                        <div class="news-title">${item.title}</div>
+        container.innerHTML = '';
+        data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'news-item';
+            
+            // Logic to check if image exists
+            let imageHTML = '';
+            if (item.image_url) {
+                imageHTML = `<div style="margin-bottom:15px;"><img src="${item.image_url}" style="max-width:100%; border:1px solid #444; border-radius:4px;"></div>`;
+            }
+
+            div.innerHTML = `
+                <div class="news-header" onclick="this.parentElement.classList.toggle('active')">
+                    <div class="news-meta">
+                        <span>${new Date(item.date).toLocaleDateString()}</span>
+                        <span>Released by DOJ</span>
                     </div>
-                    <div class="news-content">
-                        <p>${item.summary || 'No details provided.'}</p>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
+                    <div class="news-title">${item.title}</div>
+                </div>
+                <div class="news-content">
+                    ${imageHTML}
+                    <p>${item.summary || 'No details provided.'}</p>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
 
         async function submitContactForm() {
             const name = document.getElementById('contact-name').value;
