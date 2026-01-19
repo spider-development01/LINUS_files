@@ -4,40 +4,37 @@
     <meta charset="UTF-8">
     <title>Admin Portal | Linus Archive</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- LOAD CONFIG HERE -->
+    <script src="config.js"></script>
     <style>
+        /* (Same admin styles as before, just kept clean) */
         body { background: #1b1b1b; color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
         .hidden { display: none; }
-        
         #loginSection { max-width: 400px; margin: 100px auto; background: #262626; padding: 40px; border: 1px solid #444; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 4px solid #c69214; }
         input, select, textarea { width: 100%; padding: 12px; margin-top: 8px; background: #333; border: 1px solid #555; color: white; box-sizing: border-box; }
         button { width: 100%; padding: 12px; margin-top: 20px; background: #c69214; border: none; font-weight: bold; cursor: pointer; color: #000; text-transform: uppercase; }
         button:hover { background: #dba51e; }
-        
         #dashboard { max-width: 1000px; margin: 0 auto; }
         .admin-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #c69214; padding-bottom: 20px; margin-bottom: 20px; }
         .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid #333; }
         .tab-btn { background: #222; color: #aaa; border: none; padding: 15px 25px; cursor: pointer; width: auto; margin: 0; font-weight: 600; }
         .tab-btn.active { background: #c69214; color: black; }
-        
         .panel { background: #262626; padding: 30px; border: 1px solid #333; min-height: 400px; }
         h3 { color: white; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 0; }
         .list-row { display: flex; justify-content: space-between; background: #1a1a1a; padding: 15px; margin-bottom: 10px; align-items: center; border-left: 3px solid #333; }
-        .list-row:hover { border-left-color: #c69214; }
         .btn-del { background: #ff4444; color: white; padding: 5px 15px; font-size: 0.85rem; width: auto; margin: 0; }
     </style>
 </head>
 <body>
 
-    <!-- Login -->
     <div id="loginSection">
         <h2 style="color:#c69214; margin-top:0;">SECURE LOGIN</h2>
-        <input type="email" id="email" value="i_love@linux.com" readonly style="opacity:0.7">
+        <input type="email" id="email" value="i_love@linux" readonly style="opacity:0.7">
         <input type="password" id="password" placeholder="Password">
         <button onclick="login()">Authenticate</button>
         <div id="loginError" style="color: #ff6b6b; margin-top: 15px;"></div>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboard" class="hidden">
         <div class="admin-header">
             <h2>Admin Console</h2>
@@ -51,53 +48,45 @@
             <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
         </div>
 
-        <!-- LIBRARY -->
         <div id="panel-library" class="panel">
             <h3>Upload to Linus Library</h3>
             <div style="display:flex; gap:10px;">
-                <input type="text" id="libTitle" placeholder="Document Title (e.g. Flight Manifest)">
+                <input type="text" id="libTitle" placeholder="Document Title">
                 <input type="file" id="libFile" accept="image/*">
             </div>
             <button onclick="uploadLibraryImage()" style="width:auto;">Upload Evidence</button>
             <div id="libStatus" style="margin-top:10px; color:#aaa;"></div>
-            
             <h3 style="margin-top:40px;">Current Archive</h3>
             <div id="libraryList"></div>
         </div>
 
-        <!-- NEWS -->
         <div id="panel-news" class="panel hidden">
             <h3>Publish News</h3>
             <input type="text" id="newsTitle" placeholder="Headline">
             <textarea id="newsSummary" rows="6" placeholder="Full article text or summary..."></textarea>
             <button onclick="addNews()" style="width:auto;">Publish to Live Site</button>
-            
-            <h3 style="margin-top:40px;">Published Articles</h3>
-            <div id="newsList"></div>
+            <div id="newsList" style="margin-top:30px;"></div>
         </div>
 
-        <!-- INBOX -->
         <div id="panel-inbox" class="panel hidden">
             <h3>Inbox</h3>
             <div id="msgList">Loading...</div>
         </div>
 
-        <!-- SETTINGS -->
         <div id="panel-settings" class="panel hidden">
             <h3>Employment Hero Image</h3>
-            <p>Update the large banner image on the Careers page.</p>
             <input type="file" id="heroFile" accept="image/*">
             <button onclick="updateHeroImage()" style="width:auto;">Update Image</button>
             <div id="settingStatus" style="margin-top:10px;"></div>
         </div>
     </div>
-<script src="cred.js"></script>
-    <script>
 
-        // --- AUTH ---
+    <script>
+        const client = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+
         async function checkSession() {
             const { data: { session } } = await client.auth.getSession();
-            if (session && session.user.email === 'i_love@linux.com') {
+            if (session && session.user.email === 'i_love@linux') {
                 document.getElementById('loginSection').classList.add('hidden');
                 document.getElementById('dashboard').classList.remove('hidden');
                 refreshData();
@@ -116,7 +105,6 @@
         }
         async function logout() { await client.auth.signOut(); location.reload(); }
 
-        // --- TABS ---
         function switchTab(tab) {
             document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -131,7 +119,6 @@
             loadMessages();
         }
 
-        // --- LOGIC ---
         async function uploadLibraryImage() {
             const file = document.getElementById('libFile').files[0];
             const title = document.getElementById('libTitle').value;
