@@ -60,13 +60,26 @@
             <div id="libraryList"></div>
         </div>
 
-        <div id="panel-news" class="panel hidden">
-            <h3>Publish News</h3>
-            <input type="text" id="newsTitle" placeholder="Headline">
-            <textarea id="newsSummary" rows="6" placeholder="Full article text or summary..."></textarea>
-            <button onclick="addNews()" style="width:auto;">Publish to Live Site</button>
-            <div id="newsList" style="margin-top:30px;"></div>
-        </div>
+<div id="panel-news" class="panel hidden">
+    <h3>Publish News</h3>
+    
+    <!-- Title -->
+    <input type="text" id="newsTitle" placeholder="Headline">
+    
+    <!-- Image Upload -->
+    <label style="display:block; margin-top:10px; color:#aaa; font-size:0.9rem;">Article Image (Optional)</label>
+    <input type="file" id="newsFile" accept="image/*">
+
+    <!-- Summary -->
+    <textarea id="newsSummary" rows="6" placeholder="Full article text or summary..."></textarea>
+    
+    <button onclick="addNews()" style="width:auto;">Publish to Live Site</button>
+    <div id="newsStatus" style="margin-top:10px; color:#aaa;"></div>
+    
+    <h3 style="margin-top:40px;">Published Articles</h3>
+    <div id="newsList"></div>
+</div>
+
 
         <div id="panel-inbox" class="panel hidden">
             <h3>Inbox</h3>
@@ -146,16 +159,52 @@
             });
         }
 
-        async function addNews() {
-            const title = document.getElementById('newsTitle').value;
-            const summary = document.getElementById('newsSummary').value;
-            if(!title) return;
+    async function addNews() {
+        const title = document.getElementById('newsTitle').value;
+        const summary = document.getElementById('newsSummary').value;
+        const fileInput = document.getElementById('newsFile');
+        const status = document.getElementById('newsStatus');
 
-            await client.from('news_articles').insert([{ title, summary, type: 'Press Release' }]);
+        if(!title) { alert("Title is required"); return; }
+
+        status.innerText = "Publishing...";
+        let imageUrl = null;
+
+        // 1. Handle Image Upload if exists
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const name = `news_${Date.now()}_${file.name}`;
+            
+            // Upload to 'linus_files' bucket
+            const { error: upErr } = await client.storage.from('linus_files').upload(name, file);
+            if(upErr) { 
+                alert('Image upload failed: ' + upErr.message); 
+                status.innerText = "Error uploading image.";
+                return; 
+            }
+
+            const { data: urlData } = client.storage.from('linus_files').getPublicUrl(name);
+            imageUrl = urlData.publicUrl;
+        }
+
+        // 2. Insert into DB
+        const { error } = await client.from('news_articles').insert([{ 
+            title, 
+            summary, 
+            type: 'Press Release',
+            image_url: imageUrl 
+        }]);
+
+        if (error) {
+            status.innerText = "Error: " + error.message;
+        } else {
+            status.innerText = "Published Successfully!";
             document.getElementById('newsTitle').value = '';
             document.getElementById('newsSummary').value = '';
+            document.getElementById('newsFile').value = ''; // Clear file input
             loadNews();
         }
+    }
 
         async function loadNews() {
             const { data } = await client.from('news_articles').select('*').order('created_at', {ascending:false});
