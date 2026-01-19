@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U.S. Department of Justice</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #1b1b1b;
+            --bg-header: #0f1620;
+            --footer-bg: #111111;
+            --gold: #c69214;
+            --gold-hover: #dba51e;
+            --text-white: #ffffff;
+            --text-gray: #d1d1d1;
+            --link-blue: #5b9bd5;
+            --menu-hover: #1a2634;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Open Sans', sans-serif; background-color: var(--bg-dark); color: var(--text-white); overflow-x: hidden; display: flex; flex-direction: column; min-height: 100vh; }
+        a { text-decoration: none; color: white; transition: 0.2s; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .hidden { display: none !important; }
+
+        /* --- Header --- */
+        .top-bar { background-color: #0b1118; padding: 10px 0; font-size: 0.8rem; text-align: right; }
+        .top-bar a { margin-left: 20px; color: #ccc; }
+        .top-bar a:hover { color: var(--gold); }
+
+        header { background-color: var(--bg-header); padding: 20px 0; }
+        .header-inner { display: flex; justify-content: space-between; align-items: center; }
+        .logo-area { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .seal { width: 85px; height: 85px; background: url('https://upload.wikimedia.org/wikipedia/commons/5/54/Seal_of_the_United_States_Department_of_Justice.svg') no-repeat center/contain; }
+        .dept-text h1 { font-family: 'Merriweather', serif; font-size: 2.2rem; line-height: 1; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; }
+        .dept-text span { font-size: 0.9rem; display: block; margin-bottom: 5px; font-weight: 600; color: #ccc; }
+        
+        .search-box { display: flex; border: 1px solid #444; }
+        .search-box input { background: #1a1a1a; border: none; padding: 12px; color: white; width: 220px; outline: none; }
+        .search-box button { background: var(--gold); border: none; padding: 0 20px; cursor: pointer; color: #000; font-size: 1.1rem; }
+        .search-box button:hover { background: var(--gold-hover); }
+
+        /* --- Navigation --- */
+        nav { background: #111; border-top: 3px solid var(--gold); border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100; }
+        .nav-container { display: flex; align-items: center; justify-content: space-between; min-height: 55px; }
+        .nav-links { display: flex; list-style: none; gap: 0; width: 100%; }
+        .nav-links li a { display: block; padding: 18px 25px; font-weight: 600; font-size: 0.95rem; border-right: 1px solid #222; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; }
+        .nav-links li a:hover, .nav-links li a.active { color: var(--gold); background: var(--menu-hover); }
+        .hamburger { display: none; font-size: 1.5rem; cursor: pointer; color: white; padding: 15px; }
+
+        /* --- Layout --- */
+        .breadcrumbs { padding: 25px 0; color: var(--link-blue); font-size: 0.9rem; }
+        .breadcrumbs span { color: #888; margin: 0 10px; }
+        .main-grid { display: grid; grid-template-columns: 260px 1fr; gap: 50px; margin-top: 10px; padding-bottom: 80px; }
+        
+        .sidebar-menu { background: #1a1a1a; border: 1px solid #333; border-top: 3px solid var(--gold); }
+        .sidebar-menu a { display: block; padding: 15px 20px; border-bottom: 1px solid #333; color: var(--link-blue); font-size: 1rem; transition: 0.2s; cursor: pointer; }
+        .sidebar-menu a:hover, .sidebar-menu a.sidebar-active { color: white; background: #222; border-left: 4px solid var(--gold); padding-left: 16px; text-decoration: none; }
+
+        .page-title { font-family: 'Merriweather', serif; font-size: 3rem; margin-bottom: 15px; line-height: 1.1; color: white; }
+        .divider { width: 60px; height: 4px; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); margin-bottom: 40px; }
+
+        /* --- Library (Cards & Lightbox) --- */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 30px; }
+        .card { background: #222; border: 1px solid #333; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-5px); border-color: var(--gold); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .card-img-wrapper { height: 180px; overflow: hidden; cursor: zoom-in; position: relative; }
+        .card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .card:hover img { transform: scale(1.05); }
+        .card-body { padding: 20px; }
+        .card-title { font-size: 1rem; font-weight: 700; color: var(--gold); margin-bottom: 10px; line-height: 1.4; }
+        .card-meta { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Lightbox */
+        #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        #lightbox.active { opacity: 1; pointer-events: all; }
+        #lightbox img { max-width: 90%; max-height: 90%; border: 2px solid var(--gold); box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        #lightbox-close { position: absolute; top: 30px; right: 30px; color: white; font-size: 3rem; cursor: pointer; }
+        #lightbox-close:hover { color: var(--gold); }
+
+        /* --- News (Accordion) --- */
+        .news-item { background: #222; border: 1px solid #333; margin-bottom: 20px; transition: border-color 0.2s; }
+        .news-header { padding: 20px; cursor: pointer; display: flex; flex-direction: column; }
+        .news-item:hover { border-color: #555; }
+        .news-meta { color: #888; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
+        .news-title { font-family: 'Merriweather', serif; font-size: 1.3rem; color: var(--link-blue); line-height: 1.4; }
+        .news-item.active .news-title { color: var(--gold); }
+        .news-content { display: none; padding: 0 20px 20px 20px; color: #ddd; line-height: 1.7; font-size: 1rem; border-top: 1px solid #333; margin-top: 10px; padding-top: 20px; }
+        .news-item.active .news-content { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- Employment --- */
+        .hero-section { width: 100%; height: 450px; background-size: cover; background-position: center; margin-bottom: 40px; position: relative; border-bottom: 5px solid var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .hero-text { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); padding: 40px 20px; }
+        .hero-text h2 { font-family: 'Merriweather', serif; font-size: 2.5rem; color: white; margin-bottom: 10px; }
+        .hero-text p { font-size: 1.2rem; color: var(--gold); font-weight: 600; }
+        .job-card { background: #222; padding: 25px; border-left: 4px solid var(--gold); margin-bottom: 20px; }
+        .job-card h3 { color: white; margin-bottom: 10px; }
+
+        /* --- Contact --- */
+        .contact-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .contact-form { background: #262626; padding: 30px; border-top: 4px solid var(--gold); }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 700; color: #ddd; font-size: 0.9rem; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; background: #333; border: 1px solid #444; color: white; font-family: inherit; transition: border 0.2s; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--gold); outline: none; }
+        .btn-submit { background: var(--btn-blue, #005ea2); color: white; padding: 12px 30px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; width: 100%; transition: background 0.2s; }
+        .btn-submit:hover { background: #004475; }
+
+        .contact-info-box h3 { color: var(--gold); margin-bottom: 15px; font-family: 'Merriweather', serif; }
+        .contact-info-box p { margin-bottom: 15px; line-height: 1.6; color: #ccc; }
+
+        /* --- Footer --- */
+        footer { background: var(--footer-bg); border-top: 1px solid #333; margin-top: auto; padding-top: 50px; }
+        .footer-seal-lg {height: 100px; background: url('https://www.justice.gov/themes/custom/usdoj_uswds/images/doj-main-header-logo.svg') no-repeat center/contain; margin: 0 auto 15px; opacity: 0.8; }
+        
+        .footer-contact-row { background: #161616; padding: 50px 0; border-bottom: 1px solid #222; }
+        .contact-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; }
+        .contact-col h4 { color: white; font-weight: 700; margin-bottom: 10px; font-size: 1rem; }
+        .contact-col p { color: #999; font-size: 0.9rem; line-height: 1.6; }
+        .social-icons a { color: var(--gold); margin-right: 15px; font-size: 1.2rem; transition: color 0.2s; }
+        .social-icons a:hover { color: white; }
+        
+        /* Mobile */
+        @media (max-width: 992px) {
+            .main-grid { grid-template-columns: 1fr; gap: 30px; }
+            .sidebar-menu { display: none; }
+            .contact-wrapper { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .top-bar { display: none; }
+            .hamburger { display: block; }
+            .nav-links { display: none; flex-direction: column; width: 100%; background: #111; position: absolute; top: 100%; left: 0; border-bottom: 3px solid var(--gold); }
+            .nav-links.active { display: flex; }
+            .nav-links li a { border-right: none; border-bottom: 1px solid #222; padding: 15px; }
+            .header-inner { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .search-box { width: 100%; }
+            .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox">
+        <div id="lightbox-close" onclick="closeLightbox()">&times;</div>
+        <img id="lightbox-img" src="" alt="Full View">
+    </div>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container">
+            <a href="#" onclick="showSection('about')">About DOJ</a>
+            <a href="#" onclick="showSection('contact')">Find Help</a>
+            <a href="#" onclick="showSection('contact')">Contact Us</a>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="container header-inner">
+            <div class="logo-area" onclick="showSection('home')">
+                <div class="seal"></div>
+                <div class="dept-text">
+                    <span>U.S. Department of</span>
+                    <h1>Justice</h1>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" placeholder="Search Justice.gov">
+                <button><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="container nav-container">
+            <div class="hamburger" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+            <ul class="nav-links" id="navLinks">
+                <li><a onclick="showSection('home')">Home</a></li>
+                <li><a onclick="showSection('about')">About</a></li>
+                <li><a onclick="showSection('news')">News</a></li>
+                <li><a onclick="showSection('employment')">Employment</a></li>
+                <li><a onclick="showSection('contact')">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="breadcrumbs">
+            <a href="#" onclick="showSection('home')">Justice.gov</a> <span>›</span> <span id="current-page-name">Linus Library</span>
+        </div>
+
+        <div class="main-grid">
+            <!-- Sidebar -->
+            <aside class="sidebar-menu">
+                <a onclick="showSection('home')" id="link-home">Linus Library</a>
+                <a onclick="showSection('about')" id="link-about">About the Department</a>
+                <a onclick="showSection('news')" id="link-news">Press Room</a>
+                <a onclick="showSection('employment')" id="link-employment">Careers</a>
+                <a onclick="showSection('contact')" id="link-contact">Contact Us</a>
+            </aside>
+
+            <main id="main-content">
+                
+                <!-- HOME (LIBRARY) -->
+                <section id="home-section">
+                    <h1 class="page-title">Linus Library</h1>
+                    <div class="divider"></div>
+                    <div style="background:#262626; padding:25px; border-left:4px solid var(--gold); margin-bottom:30px;">
+                        <h3 style="color:#ddd; margin-bottom:10px;">Archive Notice</h3>
+                        <p style="color:#aaa; line-height:1.6;">The documents below have been released in accordance with the Transparency Act. Click on any document image to view it in high resolution.</p>
+                    </div>
+                    
+                    <div id="loader" style="text-align:center; color:var(--gold); padding:20px;">Loading Secure Archive...</div>
+                    <div class="card-grid" id="cardGrid"></div>
+                </section>
+
+                <!-- ABOUT -->
+                <section id="about-section" class="hidden">
+                    <h1 class="page-title">About the Department</h1>
+                    <div class="divider"></div>
+                    <div style="line-height:1.8; color:#ddd; font-size:1.05rem;">
+                        <p style="margin-bottom:20px;">The mission of the Department of Justice is to uphold the rule of law, to keep our country safe, and to protect civil rights. For more than a century, the Department has worked to ensure fair and impartial administration of justice for all Americans.</p>
+                        <h3 style="color:var(--gold); margin-top:30px; margin-bottom:15px; font-family:'Merriweather',serif;">Our Values</h3>
+                        <ul style="margin-left:20px; color:#ccc;">
+                            <li style="margin-bottom:10px;"><strong>Independence and Impartiality:</strong> We work each day to earn the public’s trust.</li>
+                            <li style="margin-bottom:10px;"><strong>Honesty and Integrity:</strong> Adhering to the highest standards of ethical behavior.</li>
+                            <li style="margin-bottom:10px;"><strong>Respect:</strong> Treating everyone with fairness, dignity, and compassion.</li>
+                            <li style="margin-bottom:10px;"><strong>Excellence:</strong> Providing the highest levels of service to the American people.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- NEWS -->
+                <section id="news-section" class="hidden">
+                    <h1 class="page-title">Press Releases & News</h1>
+                    <div class="divider"></div>
+                    <div id="news-container">
+                        <!-- News items injected here -->
+                        <div style="text-align: center; color: #888;">Fetching latest updates...</div>
+                    </div>
+                </section>
+
+                <!-- EMPLOYMENT -->
+                <section id="employment-section" class="hidden">
+                    <div class="hero-section" id="employment-hero" style="background-image: url('https://www.justice.gov/sites/default/files/styles/slideshow/public/images/slideshow/jmd-hero.jpg?itok=zQ7e8y8_');">
+                        <div class="hero-text">
+                            <h2>Join the Mission</h2>
+                            <p>Protecting the American people and upholding the Constitution.</p>
+                        </div>
+                    </div>
+                    <h1 class="page-title">Careers</h1>
+                    <div class="divider"></div>
+                    <p style="margin-bottom:30px; color:#ccc; line-height:1.6; font-size:1.1rem;">The Department of Justice offers opportunities for people from all backgrounds. We are looking for attorneys, agents, investigators, and administrative staff to help us serve the nation.</p>
+                    
+                    <div class="job-card">
+                        <h3><i class="fas fa-briefcase" style="color:var(--gold); margin-right:10px;"></i> Attorney Vacancies</h3>
+                        <p style="color:#aaa;">Explore legal careers in civil rights, criminal justice, and environmental law.</p>
+                    </div>
+                    <div class="job-card">
+                        <h3><i class="fas fa-user-shield" style="color:var(--gold); margin-right:10px;"></i> Law Enforcement</h3>
+                        <p style="color:#aaa;">Join the FBI, DEA, ATF, or U.S. Marshals Service.</p>
+                    </div>
+                </section>
+
+                <!-- CONTACT -->
+                <section id="contact-section" class="hidden">
+                    <h1 class="page-title">Contact Us</h1>
+                    <div class="divider"></div>
+                    
+                    <div class="contact-wrapper">
+                        <div class="contact-form">
+                            <h3 style="color:white; margin-bottom:20px;">Send a Message</h3>
+                            <div class="form-group">
+                                <label>Full Name *</label>
+                                <input type="text" id="contact-name">
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address *</label>
+                                <input type="email" id="contact-email">
+                            </div>
+                            <div class="form-group">
+                                <label>Topic *</label>
+                                <select id="contact-topic">
+                                    <option>General Inquiry</option>
+                                    <option>Press/Media</option>
+                                    <option>Report a Crime</option>
+                                    <option>Employment</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Message *</label>
+                                <textarea id="contact-msg" rows="5"></textarea>
+                            </div>
+                            <button class="btn-submit" onclick="submitContactForm()">Send Message</button>
+                            <p id="contact-status" style="margin-top:15px; font-weight:bold;"></p>
+                        </div>
+
+                        <div class="contact-info-box">
+                            <h3>Department Headquarters</h3>
+                            <p>
+                                <strong>U.S. Department of Justice</strong><br>
+                                950 Pennsylvania Avenue, NW<br>
+                                Washington, DC 20530-0001
+                            </p>
+                            <h3>Department of Justice Main Switchboard</h3>
+                            <p>202-514-2000</p>
+                            <h3>Office of the Inspector General</h3>
+                            <p>Report Waste, Fraud, and Abuse: <br>1-800-869-4499</p>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container" style="text-align:center; padding-bottom:30px;">
+            <div class="footer-seal-lg"></div>
+        </div>
+        <div class="footer-contact-row">
+            <div class="container">
+                <div class="contact-grid">
+                    <div class="contact-col">
+                        <h4>Contact Information</h4>
+                        <p>950 Pennsylvania Avenue NW<br>Washington DC 20530<br>Phone: 202-514-2000</p>
+                    </div>
+                    <div class="contact-col">
+                        <h4>Resources</h4>
+                        <p><a href="#" onclick="showSection('about')">About Us</a><br><a href="#" onclick="showSection('employment')">Careers</a><br><a href="#">Budget & Performance</a></p>
+                    </div>
+                    <div class="contact-col">
+                        <h4>Connect With Us</h4>
+                        <div class="social-icons">
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-youtube"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                        </div>
+                        <p style="margin-top:15px;">Signup for Email Updates</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+<script src="cred.js"></script>
+    <script>
+        // --- CONFIG ---
+
+        // --- NAVIGATION ---
+        function toggleMenu() { document.getElementById('navLinks').classList.toggle('active'); }
+
+        function showSection(id) {
+            // Hide all
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('sidebar-active'));
+            
+            // Show target
+            const target = document.getElementById(id + '-section') || document.getElementById('home-section');
+            target.classList.remove('hidden');
+
+            // Update Sidebar Active State
+            const sidebarLink = document.getElementById('link-' + id);
+            if(sidebarLink) sidebarLink.classList.add('sidebar-active');
+
+            // Update Breadcrumb
+            let name = "Linus Library";
+            if(id === 'about') name = "About the Department";
+            if(id === 'news') name = "Press Room";
+            if(id === 'employment') name = "Employment";
+            if(id === 'contact') name = "Contact Us";
+            document.getElementById('current-page-name').innerText = name;
+
+            // Load Data
+            if(id === 'news') fetchNews();
+            if(id === 'employment') fetchEmploymentImage();
+
+            document.getElementById('navLinks').classList.remove('active');
+            window.scrollTo(0,0);
+        }
+
+        // --- IMAGE LIGHTBOX ---
+        function openLightbox(url) {
+            const lb = document.getElementById('lightbox');
+            const img = document.getElementById('lightbox-img');
+            img.src = url;
+            lb.classList.add('active');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        // --- DATA FETCHING ---
+
+        // 1. Library (Grid)
+        async function fetchImages() {
+            const grid = document.getElementById('cardGrid');
+            const { data, error } = await client.from('library_images').select('*').order('created_at', { ascending: false });
+            document.getElementById('loader').style.display = 'none';
+            
+            if (error || !data) { grid.innerHTML = '<p style="color:red">Archive currently unavailable.</p>'; return; }
+            if (data.length === 0) { grid.innerHTML = '<p>No documents found.</p>'; return; }
+            
+            grid.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                // Note the onclick to open lightbox
+                div.innerHTML = `
+                    <div class="card-img-wrapper" onclick="openLightbox('${item.image_url}')">
+                        <img src="${item.image_url}" alt="${item.title}" loading="lazy">
+                    </div>
+                    <div class="card-body">
+                        <div class="card-title">${item.title}</div>
+                        <div class="card-meta">DOJ Released • ${new Date(item.created_at).toLocaleDateString()}</div>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        // 2. News (Accordion)
+        async function fetchNews() {
+            const container = document.getElementById('news-container');
+            const { data, error } = await client.from('news_articles').select('*').order('date', { ascending: false });
+            
+            if(error || !data) { container.innerHTML = '<p>News feed unavailable.</p>'; return; }
+            if(data.length === 0) { container.innerHTML = '<p>No recent news items.</p>'; return; }
+
+            container.innerHTML = '';
+            data.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'news-item';
+                // Accordion logic inside HTML
+                div.innerHTML = `
+                    <div class="news-header" onclick="this.parentElement.classList.toggle('active')">
+                        <div class="news-meta">
+                            <span>${new Date(item.date).toLocaleDateString()}</span>
+                            <span>Released by DOJ</span>
+                        </div>
+                        <div class="news-title">${item.title}</div>
+                    </div>
+                    <div class="news-content">
+                        <p>${item.summary || 'No details provided.'}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 3. Contact
+        async function submitContactForm() {
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const topic = document.getElementById('contact-topic').value;
+            const message = document.getElementById('contact-msg').value;
+            const status = document.getElementById('contact-status');
+
+            if(!name || !email || !message) { 
+                status.innerText = "Please complete all required fields."; 
+                status.style.color = "#ff6b6b"; 
+                return; 
+            }
+
+            status.innerText = "Transmitting...";
+            const { error } = await client.from('contact_messages').insert([{ name, email, topic, message }]);
+            
+            if(error) {
+                status.innerText = "Transmission Failed. Try again later.";
+                status.style.color = "#ff6b6b";
+            } else {
+                status.innerText = "Message Received. Thank you.";
+                status.style.color = "#4caf50";
+                // Clear form
+                document.getElementById('contact-name').value = '';
+                document.getElementById('contact-email').value = '';
+                document.getElementById('contact-msg').value = '';
+            }
+        }
+
+        // 4. Employment Hero
+        async function fetchEmploymentImage() {
+            const { data } = await client.from('site_settings').select('value').eq('key', 'employment_hero_url').single();
+            if(data && data.value) {
+                document.getElementById('employment-hero').style.backgroundImage = `url('${data.value}')`;
+            }
+        }
+
+        // Initialize
+        fetchImages();
+    </script>
+</body>
+</html>
