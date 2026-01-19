@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Portal | Linus Archive</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #1b1b1b; color: #eee; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        .hidden { display: none; }
+        
+        #loginSection { max-width: 400px; margin: 100px auto; background: #262626; padding: 40px; border: 1px solid #444; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 4px solid #c69214; }
+        input, select, textarea { width: 100%; padding: 12px; margin-top: 8px; background: #333; border: 1px solid #555; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 20px; background: #c69214; border: none; font-weight: bold; cursor: pointer; color: #000; text-transform: uppercase; }
+        button:hover { background: #dba51e; }
+        
+        #dashboard { max-width: 1000px; margin: 0 auto; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #c69214; padding-bottom: 20px; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid #333; }
+        .tab-btn { background: #222; color: #aaa; border: none; padding: 15px 25px; cursor: pointer; width: auto; margin: 0; font-weight: 600; }
+        .tab-btn.active { background: #c69214; color: black; }
+        
+        .panel { background: #262626; padding: 30px; border: 1px solid #333; min-height: 400px; }
+        h3 { color: white; border-bottom: 1px solid #444; padding-bottom: 10px; margin-top: 0; }
+        .list-row { display: flex; justify-content: space-between; background: #1a1a1a; padding: 15px; margin-bottom: 10px; align-items: center; border-left: 3px solid #333; }
+        .list-row:hover { border-left-color: #c69214; }
+        .btn-del { background: #ff4444; color: white; padding: 5px 15px; font-size: 0.85rem; width: auto; margin: 0; }
+    </style>
+</head>
+<body>
+
+    <!-- Login -->
+    <div id="loginSection">
+        <h2 style="color:#c69214; margin-top:0;">SECURE LOGIN</h2>
+        <input type="email" id="email" value="i_love@linux.com" readonly style="opacity:0.7">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Authenticate</button>
+        <div id="loginError" style="color: #ff6b6b; margin-top: 15px;"></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden">
+        <div class="admin-header">
+            <h2>Admin Console</h2>
+            <button onclick="logout()" style="width:auto; padding:8px 20px; background:#444; color:white;">Logout</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('library')">Library</button>
+            <button class="tab-btn" onclick="switchTab('news')">News</button>
+            <button class="tab-btn" onclick="switchTab('inbox')">Messages</button>
+            <button class="tab-btn" onclick="switchTab('settings')">Settings</button>
+        </div>
+
+        <!-- LIBRARY -->
+        <div id="panel-library" class="panel">
+            <h3>Upload to Linus Library</h3>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="libTitle" placeholder="Document Title (e.g. Flight Manifest)">
+                <input type="file" id="libFile" accept="image/*">
+            </div>
+            <button onclick="uploadLibraryImage()" style="width:auto;">Upload Evidence</button>
+            <div id="libStatus" style="margin-top:10px; color:#aaa;"></div>
+            
+            <h3 style="margin-top:40px;">Current Archive</h3>
+            <div id="libraryList"></div>
+        </div>
+
+        <!-- NEWS -->
+        <div id="panel-news" class="panel hidden">
+            <h3>Publish News</h3>
+            <input type="text" id="newsTitle" placeholder="Headline">
+            <textarea id="newsSummary" rows="6" placeholder="Full article text or summary..."></textarea>
+            <button onclick="addNews()" style="width:auto;">Publish to Live Site</button>
+            
+            <h3 style="margin-top:40px;">Published Articles</h3>
+            <div id="newsList"></div>
+        </div>
+
+        <!-- INBOX -->
+        <div id="panel-inbox" class="panel hidden">
+            <h3>Inbox</h3>
+            <div id="msgList">Loading...</div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="panel-settings" class="panel hidden">
+            <h3>Employment Hero Image</h3>
+            <p>Update the large banner image on the Careers page.</p>
+            <input type="file" id="heroFile" accept="image/*">
+            <button onclick="updateHeroImage()" style="width:auto;">Update Image</button>
+            <div id="settingStatus" style="margin-top:10px;"></div>
+        </div>
+    </div>
+<script src="cred.js"></script>
+    <script>
+
+        // --- AUTH ---
+        async function checkSession() {
+            const { data: { session } } = await client.auth.getSession();
+            if (session && session.user.email === 'i_love@linux.com') {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                refreshData();
+            } else if (session) {
+                await client.auth.signOut();
+            }
+        }
+        checkSession();
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+            if (error) document.getElementById('loginError').innerText = error.message;
+            else checkSession();
+        }
+        async function logout() { await client.auth.signOut(); location.reload(); }
+
+        // --- TABS ---
+        function switchTab(tab) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('panel-' + tab).classList.remove('hidden');
+            event.target.classList.add('active');
+            refreshData();
+        }
+
+        function refreshData() {
+            loadLibrary();
+            loadNews();
+            loadMessages();
+        }
+
+        // --- LOGIC ---
+        async function uploadLibraryImage() {
+            const file = document.getElementById('libFile').files[0];
+            const title = document.getElementById('libTitle').value;
+            if(!file || !title) return;
+            document.getElementById('libStatus').innerText = "Uploading...";
+            
+            const name = `doc_${Date.now()}_${file.name}`;
+            const { error: upErr } = await client.storage.from('linus_files').upload(name, file);
+            if(upErr) { alert('Error: ' + upErr.message); return; }
+
+            const { data: urlData } = client.storage.from('linus_files').getPublicUrl(name);
+            await client.from('library_images').insert([{ title, image_url: urlData.publicUrl }]);
+            
+            document.getElementById('libTitle').value = '';
+            document.getElementById('libStatus').innerText = 'Success!';
+            loadLibrary();
+        }
+
+        async function loadLibrary() {
+            const { data } = await client.from('library_images').select('*').order('created_at', {ascending:false});
+            const list = document.getElementById('libraryList');
+            list.innerHTML = '';
+            data.forEach(item => {
+                list.innerHTML += `<div class="list-row"><span>${item.title}</span> <button class="btn-del" onclick="deleteItem('library_images', '${item.id}')">Remove</button></div>`;
+            });
+        }
+
+        async function addNews() {
+            const title = document.getElementById('newsTitle').value;
+            const summary = document.getElementById('newsSummary').value;
+            if(!title) return;
+
+            await client.from('news_articles').insert([{ title, summary, type: 'Press Release' }]);
+            document.getElementById('newsTitle').value = '';
+            document.getElementById('newsSummary').value = '';
+            loadNews();
+        }
+
+        async function loadNews() {
+            const { data } = await client.from('news_articles').select('*').order('created_at', {ascending:false});
+            const list = document.getElementById('newsList');
+            list.innerHTML = '';
+            data.forEach(item => {
+                list.innerHTML += `<div class="list-row"><span>${item.title}</span> <button class="btn-del" onclick="deleteItem('news_articles', '${item.id}')">Remove</button></div>`;
+            });
+        }
+
+        async function loadMessages() {
+            const { data } = await client.from('contact_messages').select('*').order('created_at', {ascending:false});
+            const list = document.getElementById('msgList');
+            if(!data || data.length === 0) { list.innerHTML = 'No messages.'; return; }
+            list.innerHTML = '';
+            data.forEach(item => {
+                list.innerHTML += `
+                    <div style="background:#222; padding:20px; margin-bottom:15px; border-left:4px solid var(--gold);">
+                        <div style="font-weight:bold; color:white; margin-bottom:5px;">${item.name} <span style="color:#888; font-weight:normal;">(${item.email})</span></div>
+                        <div style="color:var(--gold); font-size:0.9rem; margin-bottom:10px;">Topic: ${item.topic}</div>
+                        <div style="color:#ccc; line-height:1.5;">${item.message}</div>
+                        <button class="btn-del" style="margin-top:10px;" onclick="deleteItem('contact_messages', '${item.id}')">Dismiss</button>
+                    </div>`;
+            });
+        }
+
+        async function updateHeroImage() {
+            const file = document.getElementById('heroFile').files[0];
+            if(!file) return;
+            document.getElementById('settingStatus').innerText = "Uploading...";
+            
+            const name = `hero_${Date.now()}.jpg`; 
+            const { error: upErr } = await client.storage.from('site_assets').upload(name, file);
+            if(upErr) { alert('Error: ' + upErr.message); return; }
+
+            const { data: urlData } = client.storage.from('site_assets').getPublicUrl(name);
+            await client.from('site_settings').upsert({ key: 'employment_hero_url', value: urlData.publicUrl });
+            document.getElementById('settingStatus').innerText = 'Updated successfully.';
+        }
+
+        async function deleteItem(table, id) {
+            if(!confirm('Delete this item permanently?')) return;
+            await client.from(table).delete().eq('id', id);
+            refreshData();
+        }
+    </script>
+</body>
+</html>
